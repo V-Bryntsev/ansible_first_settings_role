@@ -1,0 +1,4 @@
+---
+ my_user: ansible
+ key_path_local:  /home/{{my_user}}/.ssh/{{inventory_hostname}}
+ key_path_server: /root/.ssh/ansible/{{inventory_hostname}}

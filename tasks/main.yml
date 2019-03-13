@@ -1,0 +1,56 @@
+---
+   - name: create user ansible
+     user: 
+      name: ansible
+      #Encrypt password
+      password: MyStrongPassword
+      generate_ssh_key: yes
+      ssh_key_bits: 2048
+      ssh_key_file: .ssh/{{inventory_hostname}}
+     #Need remember user for receive him open key (module lookup get files by ansible server, but we need from remote client)
+     #so put new user to register
+     register: new_user
+     tags: first_start
+     
+     
+   - name: Set authorized key taken from file
+     authorized_key:
+      user: ansible
+      state: present
+      key: "{{ new_user.ssh_public_key }}"
+     tags: first_start
+
+   - name: give correct rights to privet key on server
+     file:
+      path: "{{key_path_local}}" 
+      owner: root
+      group: root
+      mode: 0600
+     tags: first_start
+    
+   - name: fetch privet key to ansible server
+     fetch:
+      src: "{{key_path_local}}"
+      dest: "{{key_path_server}}"
+      flat: yes
+     tags: first_start
+   
+   - name: add ansible to /etc/sudoers
+     lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^ansible'
+      line: 'ansible ALL=(ALL) NOPASSWD: ALL'
+      validate: visudo -cf %s
+     tags: first_start
+      
+   - name: add AllowUsers to /etc/ssh/sshd_config
+     lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: '^AllowUsers'
+      #add allow users
+      line: 'AllowUsers administrator ansible@ansible_server'
+     notify:
+       - restart sshd
+     tags: first_start
